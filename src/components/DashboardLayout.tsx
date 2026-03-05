@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { LucideIcon, Menu, X, LogOut, ChevronRight } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface NavItem {
   label: string;
@@ -13,13 +14,21 @@ interface DashboardLayoutProps {
   title: string;
   role: string;
   navItems: NavItem[];
-  userName: string;
+  userName?: string;
 }
 
 const DashboardLayout = ({ children, title, role, navItems, userName }: DashboardLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
+  const { profile, signOut } = useAuth();
+
+  const displayName = profile?.full_name || userName || "User";
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   return (
     <div className="flex min-h-screen">
@@ -68,15 +77,15 @@ const DashboardLayout = ({ children, title, role, navItems, userName }: Dashboar
         <div className="border-t border-sidebar-border p-3">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center shrink-0">
-              <span className="text-xs font-semibold text-sidebar-primary">{userName[0]}</span>
+              <span className="text-xs font-semibold text-sidebar-primary">{displayName[0]}</span>
             </div>
             {sidebarOpen && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{userName}</p>
+                <p className="text-sm font-medium text-sidebar-accent-foreground truncate">{displayName}</p>
               </div>
             )}
             <button
-              onClick={() => navigate("/login")}
+              onClick={handleLogout}
               className="text-sidebar-foreground hover:text-sidebar-accent-foreground shrink-0"
             >
               <LogOut className="h-4 w-4" />

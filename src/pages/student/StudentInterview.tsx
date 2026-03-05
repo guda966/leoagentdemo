@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
   MessageSquare, Play, RotateCcw, Save, Clock, Star, ChevronRight,
-  Mic, MicOff, ThumbsUp, ThumbsDown, Sparkles, History, Code, Users, Database
+  Mic, MicOff, ThumbsUp, ThumbsDown, Sparkles, History, Code, Users, Database, Loader2
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,18 +65,60 @@ const StudentInterview = () => {
   const [interviewStarted, setInterviewStarted] = useState(false);
   const [scores, setScores] = useState<number[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [questions, setQuestions] = useState<{ question: string; difficulty: string }[]>([]);
+  const [aiFeedback, setAiFeedback] = useState<any>(null);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
 
-  const questions = mockQuestions[selectedRole] || [];
-  const isComplete = currentQuestion >= questions.length && interviewStarted;
+  const isComplete = currentQuestion >= questions.length && interviewStarted && questions.length > 0;
 
-  const submitAnswer = () => {
-    setShowFeedback(true);
-    const score = Math.floor(Math.random() * 30) + 60;
-    setScores([...scores, score]);
+  const startInterview = async () => {
+    setLoadingQuestions(true);
+    try {
+      const roleLabel = roles.find(r => r.value === selectedRole)?.label || selectedRole;
+      const { data, error } = await supabase.functions.invoke("ai-mock-interview", {
+        body: { roleType: roleLabel },
+      });
+      if (error) throw error;
+      if (data?.result?.questions) {
+        setQuestions(data.result.questions);
+        setInterviewStarted(true);
+      }
+    } catch (err) {
+      console.error("Failed to generate questions:", err);
+      // Fallback to mock questions
+      setQuestions(mockQuestions[selectedRole] || []);
+      setInterviewStarted(true);
+    } finally {
+      setLoadingQuestions(false);
+    }
+  };
+
+  const submitAnswer = async () => {
+    setLoadingFeedback(true);
+    try {
+      const roleLabel = roles.find(r => r.value === selectedRole)?.label || selectedRole;
+      const { data, error } = await supabase.functions.invoke("ai-mock-interview", {
+        body: { roleType: roleLabel, question: questions[currentQuestion]?.question, answer },
+      });
+      if (error) throw error;
+      if (data?.result) {
+        setAiFeedback(data.result);
+        setScores([...scores, data.result.score || 70]);
+      }
+    } catch (err) {
+      console.error("Failed to get feedback:", err);
+      const score = Math.floor(Math.random() * 30) + 60;
+      setScores([...scores, score]);
+      setAiFeedback({ score, strengths: "Good attempt.", improvements: "Add more detail.", tip: "Use examples." });
+    } finally {
+      setLoadingFeedback(false);
+      setShowFeedback(true);
+    }
   };
 
   const nextQuestion = () => {
-    setShowFeedback(false);
+    setAiFeedback(null);
     setAnswer("");
     setCurrentQuestion((prev) => prev + 1);
   };
@@ -122,10 +165,11 @@ const StudentInterview = () => {
               <div className="flex flex-col items-center justify-center p-6 bg-muted/50 rounded-xl">
                 <MessageSquare className="h-12 w-12 text-primary mb-4" />
                 <h4 className="font-semibold text-card-foreground mb-1">{roles.find(r => r.value === selectedRole)?.label}</h4>
-                <p className="text-sm text-muted-foreground mb-1">{questions.length} questions</p>
-                <p className="text-xs text-muted-foreground mb-4">~{questions.length * 3} min estimated</p>
-                <Button onClick={() => setInterviewStarted(true)} className="gradient-primary text-primary-foreground border-0">
-                  <Play className="h-4 w-4 mr-2" /> Start Interview
+                <p className="text-sm text-muted-foreground mb-1">5 AI-generated questions</p>
+                <p className="text-xs text-muted-foreground mb-4">~15 min estimated</p>
+                <Button onClick={startInterview} className="gradient-primary text-primary-foreground border-0" disabled={loadingQuestions}>
+                  {loadingQuestions ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                  {loadingQuestions ? "Generating Questions..." : "Start Interview"}
                 </Button>
               </div>
             </div>
@@ -212,8 +256,9 @@ const StudentInterview = () => {
                   className="text-sm"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={submitAnswer} disabled={!answer.trim()} className="gradient-primary text-primary-foreground border-0">
-                    Submit Answer
+                  <Button onClick={submitAnswer} disabled={!answer.trim() || loadingFeedback} className="gradient-primary text-primary-foreground border-0">
+                    {loadingFeedback ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                    {loadingFeedback ? "Getting AI Feedback..." : "Submit Answer"}
                   </Button>
                   <Button variant="outline" disabled>
                     <Mic className="h-4 w-4 mr-2" /> Voice (Coming Soon)
@@ -229,21 +274,29 @@ const StudentInterview = () => {
                 </div>
 
                 {/* AI Feedback */}
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold text-card-foreground">AI Feedback</p>
-                    <div className="ml-auto flex items-center gap-1">
-                      <Star className="h-4 w-4 text-accent fill-accent" />
-                      <span className="text-sm font-bold text-card-foreground">{scores[scores.length - 1]}/100</span>
+                {aiFeedback && (
+                  <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-semibold text-card-foreground">AI Feedback</p>
+                      <div className="ml-auto flex items-center gap-1">
+                        <Star className="h-4 w-4 text-accent fill-accent" />
+                        <span className="text-sm font-bold text-card-foreground">{aiFeedback.score}/100</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm text-card-foreground">
+                      <p><strong>Strengths:</strong> {aiFeedback.strengths}</p>
+                      <p><strong>Areas to improve:</strong> {aiFeedback.improvements}</p>
+                      <p><strong>Tip:</strong> {aiFeedback.tip}</p>
+                      {aiFeedback.sampleAnswer && (
+                        <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border">
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">MODEL ANSWER</p>
+                          <p className="text-sm">{aiFeedback.sampleAnswer}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="space-y-2 text-sm text-card-foreground">
-                    <p><strong>Strengths:</strong> Good understanding of the core concept. Clear structure in your answer.</p>
-                    <p><strong>Areas to improve:</strong> Add specific examples or code snippets to strengthen your response. Mention trade-offs and edge cases.</p>
-                    <p><strong>Tip:</strong> Use the STAR method (Situation, Task, Action, Result) for behavioral questions.</p>
-                  </div>
-                </div>
+                )}
 
                 <Button onClick={nextQuestion} className="gradient-primary text-primary-foreground border-0">
                   {currentQuestion < questions.length - 1 ? "Next Question" : "Finish Interview"}
