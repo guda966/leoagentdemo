@@ -1,8 +1,9 @@
 import { useState } from "react";
 import {
   FileText, Download, Save, Plus, Trash2, Eye, Sparkles, Target,
-  AlertTriangle, CheckCircle, Lightbulb, Copy
+  AlertTriangle, CheckCircle, Lightbulb, Copy, Loader2
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,14 +60,26 @@ const StudentResume = () => {
   const [activeVersion, setActiveVersion] = useState(1);
   const [jobDescription, setJobDescription] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
-  const [analyzed, setAnalyzed] = useState(true);
+  const [analyzed, setAnalyzed] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
     setAnalyzing(true);
-    setTimeout(() => {
+    try {
+      const resumeText = sections.map(s => `${s.title}\n${s.content}`).join("\n\n");
+      const { data, error } = await supabase.functions.invoke("ai-resume-analyzer", {
+        body: { resumeText, jobDescription: jobDescription || undefined },
+      });
+      if (error) throw error;
+      if (data?.analysis) {
+        setAiResult(data.analysis);
+        setAnalyzed(true);
+      }
+    } catch (err: any) {
+      console.error("AI analysis error:", err);
+    } finally {
       setAnalyzing(false);
-      setAnalyzed(true);
-    }, 2000);
+    }
   };
 
   return (
@@ -172,44 +185,48 @@ const StudentResume = () => {
               rows={4}
             />
             <Button onClick={handleAnalyze} className="mt-3 gradient-primary text-primary-foreground border-0" disabled={analyzing}>
-              <Sparkles className="h-4 w-4 mr-2" />
+              {analyzing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
               {analyzing ? "Analyzing..." : "Analyze Resume"}
             </Button>
           </div>
 
-          {analyzed && (
+          {analyzed && aiResult && (
             <>
               <div className="grid md:grid-cols-3 gap-6">
                 {/* Overall score */}
                 <div className="bg-card rounded-xl p-6 shadow-card border border-border flex flex-col items-center">
                   <h3 className="text-sm font-semibold text-card-foreground mb-4">Resume Score</h3>
-                  <ScoreRing score={72} size={130} />
-                  <p className="text-xs text-muted-foreground mt-3 text-center">Improve keywords to reach 85+</p>
+                  <ScoreRing score={aiResult.score || 0} size={130} />
+                  <p className="text-xs text-muted-foreground mt-3 text-center">
+                    {aiResult.score >= 80 ? "Great score!" : "Improve keywords to reach 85+"}
+                  </p>
                 </div>
 
                 {/* Keyword match */}
                 <div className="bg-card rounded-xl p-6 shadow-card border border-border">
                   <h3 className="text-sm font-semibold text-card-foreground mb-4">Keyword Match</h3>
                   <div className="space-y-2">
-                    {keywordMatches.map((kw) => (
-                      <div key={kw.keyword} className="flex items-center gap-2">
-                        {kw.found ? (
-                          <CheckCircle className="h-4 w-4 text-success shrink-0" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-accent shrink-0" />
-                        )}
-                        <span className={`text-sm ${kw.found ? "text-card-foreground" : "text-muted-foreground"}`}>
-                          {kw.keyword}
-                        </span>
+                    {(aiResult.matchedKeywords || []).map((kw: string) => (
+                      <div key={kw} className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-success shrink-0" />
+                        <span className="text-sm text-card-foreground">{kw}</span>
+                      </div>
+                    ))}
+                    {(aiResult.missingKeywords || []).map((kw: string) => (
+                      <div key={kw} className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-accent shrink-0" />
+                        <span className="text-sm text-muted-foreground">{kw}</span>
                       </div>
                     ))}
                   </div>
                   <div className="mt-3 pt-3 border-t border-border">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-muted-foreground">Match Rate</span>
-                      <span className="font-medium text-card-foreground">60%</span>
+                      <span className="font-medium text-card-foreground">
+                        {Math.round(((aiResult.matchedKeywords?.length || 0) / Math.max((aiResult.matchedKeywords?.length || 0) + (aiResult.missingKeywords?.length || 0), 1)) * 100)}%
+                      </span>
                     </div>
-                    <Progress value={60} className="h-2" />
+                    <Progress value={Math.round(((aiResult.matchedKeywords?.length || 0) / Math.max((aiResult.matchedKeywords?.length || 0) + (aiResult.missingKeywords?.length || 0), 1)) * 100)} className="h-2" />
                   </div>
                 </div>
 
@@ -217,7 +234,7 @@ const StudentResume = () => {
                 <div className="bg-card rounded-xl p-6 shadow-card border border-border">
                   <h3 className="text-sm font-semibold text-card-foreground mb-4">Skill Gaps</h3>
                   <div className="space-y-3">
-                    {skillGaps.map((gap) => (
+                    {(aiResult.skillGaps || []).map((gap: any) => (
                       <div key={gap.skill} className="p-2.5 rounded-lg bg-muted/50">
                         <div className="flex items-center gap-2 mb-1">
                           <Target className="h-3.5 w-3.5 text-accent" />
@@ -240,7 +257,7 @@ const StudentResume = () => {
                   AI Improvement Suggestions
                 </h3>
                 <div className="space-y-3">
-                  {aiSuggestions.map((s, i) => (
+                  {(aiResult.suggestions || []).map((s: any, i: number) => (
                     <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
                       <span className="h-6 w-6 rounded-full bg-accent/15 text-accent flex items-center justify-center text-xs shrink-0 mt-0.5">
                         {i + 1}

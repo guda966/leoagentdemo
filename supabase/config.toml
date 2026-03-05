@@ -1,0 +1,10 @@
+project_id = "gvhwsdctigkwwimbbyro"
+
+[functions.ai-resume-analyzer]
+verify_jwt = false
+
+[functions.ai-mock-interview]
+verify_jwt = false
+
+[functions.ai-job-description]
+verify_jwt = false
