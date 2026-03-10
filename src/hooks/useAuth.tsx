@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
-type AppRole = "student" | "college" | "recruiter";
+type AppRole = "student" | "college" | "recruiter" | "owner";
 
 interface Profile {
   id: string;
@@ -26,6 +26,10 @@ interface Profile {
   resume_url: string | null;
   profile_completion: number;
   placement_readiness_score: number;
+  company_name: string | null;
+  address: string | null;
+  place: string | null;
+  created_by: string | null;
 }
 
 interface AuthContextType {
@@ -48,6 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -64,7 +69,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .select("role")
       .eq("user_id", userId)
       .single();
-    if (data) setRole(data.role as AppRole);
+    if (data) {
+      const r = data.role as AppRole;
+      setRole(r);
+      return r;
+    }
+    return null;
   };
 
   const refreshProfile = async () => {
@@ -75,18 +85,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Set up auth listener BEFORE getting session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Use setTimeout to avoid Supabase deadlock
           setTimeout(async () => {
             await fetchProfile(session.user.id);
-            await fetchRole(session.user.id);
+            const detectedRole = await fetchRole(session.user.id);
             setLoading(false);
+            // Auto-redirect on sign in
+            if (event === "SIGNED_IN" && detectedRole) {
+              navigate(`/${detectedRole}`, { replace: true });
+            }
           }, 0);
         } else {
           setProfile(null);
