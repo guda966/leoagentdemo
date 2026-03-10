@@ -179,7 +179,7 @@ const Landing = () => (
           <p className="text-primary-foreground/70 mb-8 max-w-md mx-auto">
             Join colleges and recruiters already using Leoaxis for smarter placements.
           </p>
-          <Link to="/login">
+          <Link to="/get-started">
             <Button size="lg" className="gradient-accent text-accent-foreground border-0 gap-2 font-semibold">
               Get Started Today <ArrowRight className="h-4 w-4" />
             </Button>
