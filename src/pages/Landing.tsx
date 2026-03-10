@@ -63,7 +63,7 @@ const Landing = () => (
           <Link to="/login">
             <Button variant="ghost" size="sm">Log in</Button>
           </Link>
-          <Link to="/login">
+          <Link to="/get-started">
             <Button size="sm" className="gradient-primary text-primary-foreground border-0">
               Get Started
             </Button>
