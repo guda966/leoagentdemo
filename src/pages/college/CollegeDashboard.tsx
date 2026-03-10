@@ -1,14 +1,22 @@
+import { useState, useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, Users, CalendarDays, BarChart3, GraduationCap, TrendingUp, CheckCircle, Clock, AlertTriangle
+  LayoutDashboard, Users, CalendarDays, BarChart3, GraduationCap, TrendingUp, CheckCircle, Plus, Loader2
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import StatCard from "@/components/StatCard";
 import ScoreRing from "@/components/ScoreRing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const navItems = [
   { label: "Overview", path: "/college", icon: LayoutDashboard },
@@ -16,6 +24,17 @@ const navItems = [
   { label: "Drives", path: "/college/drives", icon: CalendarDays },
   { label: "Analytics", path: "/college/analytics", icon: BarChart3 },
 ];
+
+interface StudentProfile {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  department: string | null;
+  skills: string[] | null;
+  placement_readiness_score: number | null;
+}
 
 const deptData = [
   { dept: "CSE", ready: 82, total: 120 },
@@ -31,14 +50,6 @@ const pieData = [
   { name: "Not Started", value: 60, color: "hsl(var(--muted))" },
 ];
 
-const students = [
-  { name: "Arjun Sharma", dept: "CSE", score: 92, status: "Placed", skills: ["React", "Node.js"] },
-  { name: "Priya Patel", dept: "CSE", score: 88, status: "Interview", skills: ["Python", "ML"] },
-  { name: "Rahul Kumar", dept: "ECE", score: 76, status: "Shortlisted", skills: ["Embedded", "C++"] },
-  { name: "Sneha Reddy", dept: "Mech", score: 65, status: "Applied", skills: ["CAD", "Python"] },
-  { name: "Vikram Singh", dept: "EEE", score: 82, status: "Placed", skills: ["Power Systems", "MATLAB"] },
-];
-
 const drives = [
   { company: "TechCorp", date: "Mar 5", roles: "SDE", eligible: 85, applied: 62, status: "Active" },
   { company: "InnovateLabs", date: "Mar 12", roles: "Full Stack", eligible: 70, applied: 0, status: "Upcoming" },
@@ -51,8 +62,151 @@ const driveStatusColor: Record<string, string> = {
   Completed: "bg-muted text-muted-foreground",
 };
 
+const StudentsTab = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    full_name: "", email: "", password: "", phone: "", department: "",
+  });
+
+  const fetchStudents = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("created_by", user?.id);
+    setStudents((data as StudentProfile[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (user) fetchStudents();
+  }, [user]);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-managed-user", {
+        body: {
+          ...form,
+          role: "student",
+          college_name: null, // will be set from profile
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Student added!", description: `${form.full_name} can now log in.` });
+      setForm({ full_name: "", email: "", password: "", phone: "", department: "" });
+      setDialogOpen(false);
+      fetchStudents();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="gradient-primary text-primary-foreground border-0 gap-2" size="sm">
+              <Plus className="h-4 w-4" /> Add Student
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add New Student</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreate} className="space-y-4 mt-2">
+              <div>
+                <Label>Full Name</Label>
+                <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} placeholder="Student name" className="mt-1.5" required />
+              </div>
+              <div>
+                <Label>Department</Label>
+                <Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="e.g. CSE" className="mt-1.5" />
+              </div>
+              <div>
+                <Label>Phone</Label>
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+91 XXXXX XXXXX" className="mt-1.5" />
+              </div>
+              <div>
+                <Label>Email (Login)</Label>
+                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="student@college.edu" className="mt-1.5" required />
+              </div>
+              <div>
+                <Label>Password</Label>
+                <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Set a password" className="mt-1.5" required minLength={6} />
+              </div>
+              <Button type="submit" className="w-full gradient-primary text-primary-foreground border-0" disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Create Student
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : students.length === 0 ? (
+        <div className="bg-card rounded-xl p-12 shadow-card border border-border text-center">
+          <GraduationCap className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No students added yet.</p>
+        </div>
+      ) : (
+        <div className="bg-card rounded-xl shadow-card border border-border overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Student</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Department</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Readiness</th>
+                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Skills</th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map((s) => (
+                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                  <td className="p-4">
+                    <div>
+                      <p className="text-sm font-medium text-card-foreground">{s.full_name}</p>
+                      <p className="text-xs text-muted-foreground">{s.email}</p>
+                    </div>
+                  </td>
+                  <td className="p-4 text-sm text-muted-foreground">{s.department || "-"}</td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      <Progress value={s.placement_readiness_score || 0} className="h-1.5 w-16" />
+                      <span className="text-xs font-medium text-card-foreground">{s.placement_readiness_score || 0}%</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex gap-1">
+                      {(s.skills || []).slice(0, 3).map((sk) => (
+                        <Badge key={sk} variant="secondary" className="text-[10px] px-1.5 py-0">{sk}</Badge>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CollegeDashboard = () => (
-  <DashboardLayout title="Placement Cell" role="College Admin" navItems={navItems} userName="Dr. Meera Iyer">
+  <DashboardLayout title="Placement Cell" role="College Admin" navItems={navItems}>
     <Tabs defaultValue="overview" className="space-y-6">
       <TabsList className="bg-card border border-border">
         <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -111,45 +265,9 @@ const CollegeDashboard = () => (
         </div>
       </TabsContent>
 
-      {/* Students */}
+      {/* Students - now with real data + add student */}
       <TabsContent value="students">
-        <div className="bg-card rounded-xl shadow-card border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Student</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Department</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Readiness</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Skills</th>
-                <th className="text-left text-xs font-semibold text-muted-foreground p-4">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((s) => (
-                <tr key={s.name} className="border-b border-border last:border-0 hover:bg-muted/30">
-                  <td className="p-4 text-sm font-medium text-card-foreground">{s.name}</td>
-                  <td className="p-4 text-sm text-muted-foreground">{s.dept}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Progress value={s.score} className="h-1.5 w-16" />
-                      <span className="text-xs font-medium text-card-foreground">{s.score}%</span>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <div className="flex gap-1">
-                      {s.skills.map((sk) => (
-                        <Badge key={sk} variant="secondary" className="text-[10px] px-1.5 py-0">{sk}</Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <Badge variant="outline" className="text-xs">{s.status}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <StudentsTab />
       </TabsContent>
 
       {/* Drives */}

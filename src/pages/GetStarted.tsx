@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
-const Login = () => {
+const GetStarted = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { signIn, user, role: userRole, loading } = useAuth();
+  const { signUp, user, role: userRole, loading } = useAuth();
   const { toast } = useToast();
 
-  // Redirect if already logged in
   if (user && userRole && !loading) {
     navigate(`/${userRole}`, { replace: true });
   }
@@ -24,8 +24,12 @@ const Login = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await signIn(email, password);
-      // Auth state change will handle redirect
+      await signUp(email, password, fullName, "owner");
+      toast({
+        title: "Account created!",
+        description: "Check your email to verify your account, then sign in.",
+      });
+      navigate("/login");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -45,10 +49,10 @@ const Login = () => {
             <span className="text-2xl font-bold text-primary-foreground">Leoaxis</span>
           </div>
           <h2 className="text-3xl font-bold text-primary-foreground mb-4 leading-tight">
-            AI-Powered Placement Platform
+            Create Your Leoaxis Account
           </h2>
           <p className="text-primary-foreground/60 leading-relaxed">
-            Smart campus hiring connecting students, colleges, and recruiters with AI-driven insights and tools.
+            As the owner, you'll manage your platform — add recruiters, colleges, and oversee the entire placement ecosystem.
           </p>
         </div>
       </div>
@@ -56,15 +60,23 @@ const Login = () => {
       {/* Right - form */}
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <h1 className="text-2xl font-bold text-foreground mb-1">Welcome back</h1>
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 mb-4">
+            <Shield className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary">Owner Account</span>
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Get Started</h1>
           <p className="text-muted-foreground mb-8">
-            Sign in with your email and password
+            Create your owner account to manage recruiters and colleges
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" className="mt-1.5" required />
+            </div>
+            <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1.5" required />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@leoaxis.com" className="mt-1.5" required />
             </div>
             <div>
               <Label htmlFor="password">Password</Label>
@@ -72,14 +84,14 @@ const Login = () => {
             </div>
             <Button type="submit" className="w-full gradient-primary text-primary-foreground border-0 gap-2" disabled={submitting}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-              Sign In
+              Create Account
             </Button>
           </form>
 
           <p className="text-center text-sm text-muted-foreground mt-6">
-            Don't have an account?{" "}
-            <Link to="/get-started" className="text-primary font-medium hover:underline">
-              Get Started
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary font-medium hover:underline">
+              Sign In
             </Link>
           </p>
         </div>
@@ -88,4 +100,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default GetStarted;

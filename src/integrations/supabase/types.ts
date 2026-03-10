@@ -171,12 +171,15 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
           avatar_url: string | null
           bio: string | null
           certifications: string[] | null
           college_id: string | null
           college_name: string | null
+          company_name: string | null
           created_at: string
+          created_by: string | null
           department: string | null
           education: Json | null
           email: string | null
@@ -186,6 +189,7 @@ export type Database = {
           id: string
           linkedin_url: string | null
           phone: string | null
+          place: string | null
           placement_readiness_score: number | null
           profile_completion: number | null
           projects: Json | null
@@ -195,12 +199,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          address?: string | null
           avatar_url?: string | null
           bio?: string | null
           certifications?: string[] | null
           college_id?: string | null
           college_name?: string | null
+          company_name?: string | null
           created_at?: string
+          created_by?: string | null
           department?: string | null
           education?: Json | null
           email?: string | null
@@ -210,6 +217,7 @@ export type Database = {
           id?: string
           linkedin_url?: string | null
           phone?: string | null
+          place?: string | null
           placement_readiness_score?: number | null
           profile_completion?: number | null
           projects?: Json | null
@@ -219,12 +227,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          address?: string | null
           avatar_url?: string | null
           bio?: string | null
           certifications?: string[] | null
           college_id?: string | null
           college_name?: string | null
+          company_name?: string | null
           created_at?: string
+          created_by?: string | null
           department?: string | null
           education?: Json | null
           email?: string | null
@@ -234,6 +245,7 @@ export type Database = {
           id?: string
           linkedin_url?: string | null
           phone?: string | null
+          place?: string | null
           placement_readiness_score?: number | null
           profile_completion?: number | null
           projects?: Json | null
@@ -276,7 +288,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "student" | "college" | "recruiter"
+      app_role: "student" | "college" | "recruiter" | "owner"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -404,7 +416,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["student", "college", "recruiter"],
+      app_role: ["student", "college", "recruiter", "owner"],
     },
   },
 } as const
