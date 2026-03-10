@@ -101,7 +101,7 @@ const Landing = () => (
               End-to-end AI platform connecting students, colleges, and recruiters for smarter campus hiring and placement readiness.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link to="/login">
+              <Link to="/get-started">
                 <Button size="lg" className="gradient-primary text-primary-foreground border-0 gap-2">
                   Start Free <ArrowRight className="h-4 w-4" />
                 </Button>
