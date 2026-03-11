@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ArrowRight, Loader2, Shield } from "lucide-react";
+import { ArrowRight, Loader2, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +24,7 @@ const GetStarted = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await signUp(email, password, fullName, "owner");
+      await signUp(email, password, fullName, "student");
       toast({
         title: "Account created!",
         description: "Check your email to verify your account, then sign in.",
@@ -49,10 +49,10 @@ const GetStarted = () => {
             <span className="text-2xl font-bold text-primary-foreground">Leoaxis</span>
           </div>
           <h2 className="text-3xl font-bold text-primary-foreground mb-4 leading-tight">
-            Create Your Leoaxis Account
+            Launch Your Career with Leoaxis
           </h2>
           <p className="text-primary-foreground/60 leading-relaxed">
-            As the owner, you'll manage your platform — add recruiters, colleges, and oversee the entire placement ecosystem.
+            Create your student account to explore job opportunities, build your profile, get AI-powered resume analysis, and apply to top companies hiring on campus.
           </p>
         </div>
       </div>
@@ -61,12 +61,12 @@ const GetStarted = () => {
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 mb-4">
-            <Shield className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs font-semibold text-primary">Owner Account</span>
+            <GraduationCap className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary">Student Account</span>
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-1">Get Started</h1>
           <p className="text-muted-foreground mb-8">
-            Create your owner account to manage recruiters and colleges
+            Create your student account to explore jobs and build your career
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,7 +76,7 @@ const GetStarted = () => {
             </div>
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@leoaxis.com" className="mt-1.5" required />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1.5" required />
             </div>
             <div>
               <Label htmlFor="password">Password</Label>

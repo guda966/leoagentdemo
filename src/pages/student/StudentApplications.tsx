@@ -1,22 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Send, BookOpen, MessageSquare, CheckCircle, XCircle, Clock,
-  Filter, ChevronDown, ExternalLink, Eye
+  Eye, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
-const applications = [
-  { id: 1, company: "TechCorp", role: "Frontend Developer", status: "Interview", date: "Feb 28", logo: "TC", salary: "₹8-12 LPA", nextStep: "Technical round on Mar 5", notes: "Cleared coding round" },
-  { id: 2, company: "InnovateLabs", role: "Full Stack Engineer", status: "Shortlisted", date: "Feb 25", logo: "IL", salary: "₹10-15 LPA", nextStep: "Awaiting interview schedule", notes: "Profile reviewed" },
-  { id: 3, company: "DataMinds", role: "ML Engineer", status: "Applied", date: "Feb 22", logo: "DM", salary: "₹12-18 LPA", nextStep: "Under review", notes: "" },
-  { id: 4, company: "Acme Inc", role: "SDE Intern", status: "Selected", date: "Feb 15", logo: "AI", salary: "₹40K/month", nextStep: "Joining on Mar 15", notes: "Offer accepted" },
-  { id: 5, company: "StartupXYZ", role: "Backend Dev", status: "Rejected", date: "Feb 10", logo: "SX", salary: "₹7-11 LPA", nextStep: "—", notes: "Position filled" },
-  { id: 6, company: "MegaTech", role: "SDE Intern", status: "Interview", date: "Feb 8", logo: "MT", salary: "₹35K/month", nextStep: "HR round on Mar 2", notes: "Cleared technical round" },
-  { id: 7, company: "CloudBase", role: "DevOps Engineer", status: "Applied", date: "Feb 5", logo: "CB", salary: "₹9-13 LPA", nextStep: "Under review", notes: "" },
-  { id: 8, company: "FinServe", role: "Full Stack Dev", status: "Shortlisted", date: "Feb 3", logo: "FS", salary: "₹11-16 LPA", nextStep: "Assignment due Mar 4", notes: "Take-home assignment sent" },
-];
+interface ApplicationWithJob {
+  id: string;
+  status: string;
+  match_score: number | null;
+  applied_at: string;
+  updated_at: string;
+  job: {
+    id: string;
+    title: string;
+    company: string;
+    salary_range: string | null;
+    location: string | null;
+  };
+}
 
 const statusConfig: Record<string, { color: string; icon: React.ReactNode; step: number }> = {
   Applied: { color: "bg-muted text-muted-foreground", icon: <Send className="h-3.5 w-3.5" />, step: 1 },
@@ -29,7 +34,36 @@ const statusConfig: Record<string, { color: string; icon: React.ReactNode; step:
 const statusFlow = ["Applied", "Shortlisted", "Interview", "Selected"];
 
 const StudentApplications = () => {
+  const [applications, setApplications] = useState<ApplicationWithJob[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) fetchApplications();
+  }, [user]);
+
+  const fetchApplications = async () => {
+    const { data, error } = await supabase
+      .from("applications")
+      .select("*, job:jobs(id, title, company, salary_range, location)")
+      .eq("student_id", user!.id)
+      .order("applied_at", { ascending: false });
+
+    if (!error && data) {
+      setApplications(
+        data.map((a: any) => ({
+          id: a.id,
+          status: a.status,
+          match_score: a.match_score,
+          applied_at: a.applied_at,
+          updated_at: a.updated_at,
+          job: a.job,
+        }))
+      );
+    }
+    setLoading(false);
+  };
 
   const filtered = applications.filter((app) => filter === "all" || app.status === filter);
 
@@ -41,6 +75,14 @@ const StudentApplications = () => {
     selected: applications.filter((a) => a.status === "Selected").length,
     rejected: applications.filter((a) => a.status === "Rejected").length,
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -69,21 +111,34 @@ const StudentApplications = () => {
         ))}
       </div>
 
+      {filtered.length === 0 && (
+        <div className="bg-card rounded-xl p-10 text-center border border-border">
+          <Send className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-muted-foreground">No applications yet. Browse jobs to get started!</p>
+        </div>
+      )}
+
       {/* Application cards */}
       <div className="space-y-4">
         {filtered.map((app) => {
-          const config = statusConfig[app.status];
+          const config = statusConfig[app.status] || statusConfig.Applied;
+          const logo = app.job.company.slice(0, 2).toUpperCase();
+          const dateStr = new Date(app.applied_at).toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+
           return (
             <div key={app.id} className="bg-card rounded-xl p-5 shadow-card border border-border">
               <div className="flex items-start gap-4">
                 <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
-                  {app.logo}
+                  {logo}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h3 className="font-semibold text-card-foreground">{app.role}</h3>
-                      <p className="text-sm text-muted-foreground">{app.company} · {app.salary}</p>
+                      <h3 className="font-semibold text-card-foreground">{app.job.title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {app.job.company}
+                        {app.job.salary_range && ` · ${app.job.salary_range}`}
+                      </p>
                     </div>
                     <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${config.color}`}>
                       {config.icon} {app.status}
@@ -112,16 +167,12 @@ const StudentApplications = () => {
 
                   <div className="flex items-center justify-between mt-3">
                     <div className="text-xs text-muted-foreground">
-                      <span className="mr-3"><Clock className="h-3 w-3 inline mr-1" />{app.date}</span>
-                      {app.nextStep && <span className="text-card-foreground font-medium">Next: {app.nextStep}</span>}
+                      <span className="mr-3"><Clock className="h-3 w-3 inline mr-1" />{dateStr}</span>
+                      {app.match_score && (
+                        <Badge variant="secondary" className="text-[10px]">{app.match_score}% match</Badge>
+                      )}
                     </div>
-                    <Button variant="ghost" size="sm" className="text-xs">
-                      <Eye className="h-3.5 w-3.5 mr-1" /> View Details
-                    </Button>
                   </div>
-                  {app.notes && (
-                    <p className="text-xs text-muted-foreground mt-2 italic">Note: {app.notes}</p>
-                  )}
                 </div>
               </div>
             </div>

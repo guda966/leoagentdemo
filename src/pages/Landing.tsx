@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { GraduationCap, Building2, Briefcase, Brain, BarChart3, Users, ArrowRight, CheckCircle, Sparkles } from "lucide-react";
+import { GraduationCap, Building2, Briefcase, Brain, BarChart3, Users, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import heroBg from "@/assets/hero-bg.jpg";
 
@@ -103,12 +103,14 @@ const Landing = () => (
             <div className="flex flex-wrap gap-3">
               <Link to="/get-started">
                 <Button size="lg" className="gradient-primary text-primary-foreground border-0 gap-2">
-                  Start Free <ArrowRight className="h-4 w-4" />
+                  Get Started as Student <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10">
-                Watch Demo
-              </Button>
+              <Link to="/login">
+                <Button size="lg" variant="outline" className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10">
+                  Log In
+                </Button>
+              </Link>
             </div>
           </motion.div>
         </div>
