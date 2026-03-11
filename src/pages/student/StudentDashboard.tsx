@@ -3,6 +3,7 @@ import {
   LayoutDashboard, User, FileText, Search, MessageSquare, ClipboardList
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { useAuth } from "@/hooks/useAuth";
 import StudentOverview from "./StudentOverview";
 import StudentProfile from "./StudentProfile";
 import StudentResume from "./StudentResume";
@@ -30,10 +31,11 @@ const pageTitles: Record<string, string> = {
 
 const StudentDashboard = () => {
   const location = useLocation();
+  const { profile } = useAuth();
   const title = pageTitles[location.pathname] || "Dashboard";
 
   return (
-    <DashboardLayout title={title} role="Student" navItems={navItems} userName="Arjun Sharma">
+    <DashboardLayout title={title} role="Student" navItems={navItems} userName={profile?.full_name || "Student"}>
       <Routes>
         <Route index element={<StudentOverview />} />
         <Route path="profile" element={<StudentProfile />} />
