@@ -4,7 +4,6 @@ import {
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import StatCard from "@/components/StatCard";
-import ScoreRing from "@/components/ScoreRing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import RecruiterCandidates from "./RecruiterCandidates";
 
 const navItems = [
   { label: "Overview", path: "/recruiter", icon: LayoutDashboard },
