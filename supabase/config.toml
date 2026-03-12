@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.ai-job-description]
 verify_jwt = false
+
+[functions.ai-aptitude-test]
+verify_jwt = false

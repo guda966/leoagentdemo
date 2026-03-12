@@ -1,6 +1,6 @@
 import { Routes, Route, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, User, FileText, Search, MessageSquare, ClipboardList
+  LayoutDashboard, User, FileText, Search, MessageSquare, ClipboardList, BookOpen
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,12 +10,14 @@ import StudentResume from "./StudentResume";
 import StudentJobs from "./StudentJobs";
 import StudentInterview from "./StudentInterview";
 import StudentApplications from "./StudentApplications";
+import StudentAptitudeTest from "./StudentAptitudeTest";
 
 const navItems = [
   { label: "Overview", path: "/student", icon: LayoutDashboard },
   { label: "Profile", path: "/student/profile", icon: User },
   { label: "Resume", path: "/student/resume", icon: FileText },
   { label: "Job Search", path: "/student/jobs", icon: Search },
+  { label: "Aptitude Tests", path: "/student/aptitude", icon: BookOpen },
   { label: "Mock Interview", path: "/student/interview", icon: MessageSquare },
   { label: "Applications", path: "/student/applications", icon: ClipboardList },
 ];
@@ -25,6 +27,7 @@ const pageTitles: Record<string, string> = {
   "/student/profile": "Profile",
   "/student/resume": "Resume & AI Analyzer",
   "/student/jobs": "AI Job Search",
+  "/student/aptitude": "Aptitude Tests",
   "/student/interview": "Mock Interview",
   "/student/applications": "Applications",
 };
@@ -41,6 +44,7 @@ const StudentDashboard = () => {
         <Route path="profile" element={<StudentProfile />} />
         <Route path="resume" element={<StudentResume />} />
         <Route path="jobs" element={<StudentJobs />} />
+        <Route path="aptitude" element={<StudentAptitudeTest />} />
         <Route path="interview" element={<StudentInterview />} />
         <Route path="applications" element={<StudentApplications />} />
       </Routes>

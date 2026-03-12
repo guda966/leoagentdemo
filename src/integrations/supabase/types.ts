@@ -52,6 +52,75 @@ export type Database = {
           },
         ]
       }
+      aptitude_tests: {
+        Row: {
+          answers: Json | null
+          application_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          job_id: string
+          questions: Json
+          recruiter_id: string
+          score: number | null
+          started_at: string | null
+          status: string
+          student_id: string
+          time_limit_minutes: number
+          total_questions: number
+          violations: Json | null
+        }
+        Insert: {
+          answers?: Json | null
+          application_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          questions?: Json
+          recruiter_id: string
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          student_id: string
+          time_limit_minutes?: number
+          total_questions?: number
+          violations?: Json | null
+        }
+        Update: {
+          answers?: Json | null
+          application_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          questions?: Json
+          recruiter_id?: string
+          score?: number | null
+          started_at?: string | null
+          status?: string
+          student_id?: string
+          time_limit_minutes?: number
+          total_questions?: number
+          violations?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aptitude_tests_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aptitude_tests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           company: string
