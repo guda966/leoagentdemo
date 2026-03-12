@@ -44,6 +44,7 @@ const StudentDashboard = () => {
         <Route path="profile" element={<StudentProfile />} />
         <Route path="resume" element={<StudentResume />} />
         <Route path="jobs" element={<StudentJobs />} />
+        <Route path="aptitude" element={<StudentAptitudeTest />} />
         <Route path="interview" element={<StudentInterview />} />
         <Route path="applications" element={<StudentApplications />} />
       </Routes>

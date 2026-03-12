@@ -265,67 +265,12 @@ const RecruiterDashboard = () => {
 
         {/* Candidates */}
         <TabsContent value="candidates" className="space-y-4">
-          <p className="text-sm text-muted-foreground">All applicants sorted by AI match score</p>
-          {applications.length === 0 ? (
-            <div className="bg-card rounded-xl p-10 text-center border border-border">
-              <Users className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No applications yet</p>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {[...applications].sort((a, b) => (b.match_score || 0) - (a.match_score || 0)).map((app) => {
-                const jobTitle = jobs.find((j) => j.id === app.job_id)?.title || "Unknown Job";
-                return (
-                  <div key={app.id} className="bg-card rounded-xl p-5 shadow-card border border-border flex items-center justify-between">
-                    <div className="flex items-center gap-5">
-                      <ScoreRing score={app.match_score || 0} size={56} strokeWidth={5} />
-                      <div>
-                        <h3 className="font-semibold text-card-foreground">
-                          {app.student_profile?.full_name || "Student"}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {app.student_profile?.college_name || "College"} · Applied for {jobTitle}
-                        </p>
-                        <div className="flex gap-1.5 mt-1.5">
-                          {(app.student_profile?.skills || []).slice(0, 4).map((s) => (
-                            <Badge key={s} variant="secondary" className="text-[10px] px-1.5 py-0">{s}</Badge>
-                          ))}
-                        </div>
-                        <Badge variant="outline" className="text-[10px] mt-1 capitalize">{app.status}</Badge>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {app.status === "Applied" && (
-                        <>
-                          <Button size="sm" variant="outline" className="text-xs" onClick={() => updateApplicationStatus(app.id, "Shortlisted")}>
-                            Shortlist
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-xs text-destructive" onClick={() => updateApplicationStatus(app.id, "Rejected")}>
-                            Reject
-                          </Button>
-                        </>
-                      )}
-                      {app.status === "Shortlisted" && (
-                        <Button size="sm" className="gradient-primary text-primary-foreground border-0 text-xs" onClick={() => updateApplicationStatus(app.id, "Interview")}>
-                          Schedule Interview
-                        </Button>
-                      )}
-                      {app.status === "Interview" && (
-                        <>
-                          <Button size="sm" className="bg-success text-success-foreground text-xs" onClick={() => updateApplicationStatus(app.id, "Selected")}>
-                            Select
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-xs text-destructive" onClick={() => updateApplicationStatus(app.id, "Rejected")}>
-                            Reject
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <RecruiterCandidates
+            applications={applications}
+            jobs={jobs}
+            onStatusUpdate={updateApplicationStatus}
+            onRefresh={fetchData}
+          />
         </TabsContent>
 
         {/* Pipeline */}
