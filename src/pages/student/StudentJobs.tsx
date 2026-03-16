@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   Search, MapPin, Briefcase, IndianRupee, Bookmark, BookmarkCheck,
-  ExternalLink, Sparkles, Loader2, Send, FileText, CheckCircle, AlertCircle
+  ExternalLink, Sparkles, Loader2, Send, FileText, CheckCircle, AlertCircle, Upload
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,9 @@ const StudentJobs = () => {
   const [coverLetter, setCoverLetter] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [appliedJobIds, setAppliedJobIds] = useState<string[]>([]);
-  const { user, profile } = useAuth();
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [uploadingResume, setUploadingResume] = useState(false);
+  const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -75,10 +77,48 @@ const StudentJobs = () => {
     return Math.round((matched / jobSkills.length) * 100);
   };
 
+  const handleResumeUpload = async (): Promise<string | null> => {
+    if (!resumeFile || !user) return profile?.resume_url || null;
+    setUploadingResume(true);
+    try {
+      const ext = resumeFile.name.split(".").pop();
+      const filePath = `${user.id}/resume_${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("resumes")
+        .upload(filePath, resumeFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Update profile with resume path
+      await supabase.from("profiles").update({ resume_url: filePath }).eq("user_id", user.id);
+      await refreshProfile();
+      return filePath;
+    } catch (err: any) {
+      toast({ title: "Resume Upload Failed", description: err.message, variant: "destructive" });
+      return profile?.resume_url || null;
+    } finally {
+      setUploadingResume(false);
+    }
+  };
+
   const handleApply = async () => {
     if (!applyingJob || !user) return;
+
+    // Require resume
+    if (!profile?.resume_url && !resumeFile) {
+      toast({ title: "Resume Required", description: "Please upload your resume to apply", variant: "destructive" });
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // Upload resume if new file selected
+      let resumePath = profile?.resume_url || null;
+      if (resumeFile) {
+        resumePath = await handleResumeUpload();
+      }
+
       const matchScore = calculateMatch(applyingJob);
 
       // 1. Create application
@@ -99,7 +139,7 @@ const StudentJobs = () => {
         related_id: applyingJob.id,
       });
 
-      // 3. Notify college if student was created by a college
+      // 3. Notify college
       if (profile?.created_by) {
         await supabase.from("notifications").insert({
           user_id: profile.created_by,
@@ -114,6 +154,7 @@ const StudentJobs = () => {
       toast({ title: "Application Submitted!", description: `Applied to ${applyingJob.title} at ${applyingJob.company}` });
       setApplyingJob(null);
       setCoverLetter("");
+      setResumeFile(null);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -161,12 +202,7 @@ const StudentJobs = () => {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[240px]">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search jobs, skills, companies..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Search jobs, skills, companies..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
           <Select value={locationFilter} onValueChange={setLocationFilter}>
             <SelectTrigger className="w-[160px]">
@@ -187,7 +223,6 @@ const StudentJobs = () => {
         </div>
       </div>
 
-      {/* Results */}
       <p className="text-sm text-muted-foreground">{filteredJobs.length} jobs found</p>
 
       {filteredJobs.length === 0 && (
@@ -219,25 +254,11 @@ const StudentJobs = () => {
                       )}
                     </button>
                   </div>
-                  {job.description && (
-                    <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{job.description}</p>
-                  )}
+                  {job.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{job.description}</p>}
                   <div className="flex items-center gap-4 mt-3 flex-wrap">
-                    {job.location && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <MapPin className="h-3.5 w-3.5" /> {job.location}
-                      </span>
-                    )}
-                    {job.salary_range && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <IndianRupee className="h-3.5 w-3.5" /> {job.salary_range}
-                      </span>
-                    )}
-                    {job.experience && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Briefcase className="h-3.5 w-3.5" /> {job.experience}
-                      </span>
-                    )}
+                    {job.location && <span className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {job.location}</span>}
+                    {job.salary_range && <span className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="h-3.5 w-3.5" /> {job.salary_range}</span>}
+                    {job.experience && <span className="text-xs text-muted-foreground flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" /> {job.experience}</span>}
                     <span className="text-xs text-muted-foreground">{timeAgo(job.created_at)}</span>
                   </div>
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -250,11 +271,7 @@ const StudentJobs = () => {
                           <CheckCircle className="h-3.5 w-3.5" /> Applied
                         </Button>
                       ) : (
-                        <Button
-                          size="sm"
-                          className="gradient-primary text-primary-foreground border-0 text-xs"
-                          onClick={() => setApplyingJob(job)}
-                        >
+                        <Button size="sm" className="gradient-primary text-primary-foreground border-0 text-xs" onClick={() => setApplyingJob(job)}>
                           <Send className="h-3.5 w-3.5 mr-1" /> Apply
                         </Button>
                       )}
@@ -278,23 +295,21 @@ const StudentJobs = () => {
           </DialogHeader>
 
           <div className="space-y-4">
-            {/* Application steps */}
+            {/* Steps */}
             <div className="bg-muted/50 rounded-lg p-4 space-y-2">
               <h4 className="text-sm font-semibold text-card-foreground">Application Process</h4>
               <div className="space-y-1.5">
                 {[
-                  "Profile & resume reviewed by AI",
+                  "Upload resume & profile reviewed by AI",
                   "Application sent to recruiter",
                   "College notified of your application",
                   "Recruiter screens with AI match score",
-                  "Shortlisted candidates get interview call",
+                  "Shortlisted → Aptitude Test (40 MCQs)",
                   "Technical & HR interview rounds",
                   "Offer letter if selected",
                 ].map((step, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                      {i + 1}
-                    </div>
+                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{i + 1}</div>
                     <span className="text-xs text-muted-foreground">{step}</span>
                   </div>
                 ))}
@@ -314,8 +329,8 @@ const StudentJobs = () => {
                   <span>Skills: {profile?.skills?.length || 0} listed</span>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
-                  {profile?.resume_url ? <CheckCircle className="h-3.5 w-3.5 text-success" /> : <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
-                  <span>Resume: {profile?.resume_url ? "Uploaded" : "Not uploaded"}</span>
+                  {(profile?.resume_url || resumeFile) ? <CheckCircle className="h-3.5 w-3.5 text-success" /> : <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
+                  <span>Resume: {profile?.resume_url ? "Uploaded" : resumeFile ? resumeFile.name : "Not uploaded"}</span>
                 </div>
               </div>
               {applyingJob && (
@@ -326,14 +341,41 @@ const StudentJobs = () => {
               )}
             </div>
 
+            {/* Resume upload */}
+            <div>
+              <label className="text-sm font-medium text-card-foreground mb-1 block">
+                Resume {!profile?.resume_url && <span className="text-destructive">*</span>}
+              </label>
+              {profile?.resume_url && !resumeFile && (
+                <p className="text-xs text-muted-foreground mb-2">Your existing resume will be used. Upload a new one to replace it.</p>
+              )}
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 px-4 py-2 border border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors flex-1">
+                  <Upload className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {resumeFile ? resumeFile.name : "Choose PDF file"}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) setResumeFile(file);
+                    }}
+                  />
+                </label>
+                {resumeFile && (
+                  <Button size="sm" variant="ghost" onClick={() => setResumeFile(null)} className="text-xs">
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+
             <div>
               <label className="text-sm font-medium text-card-foreground mb-1 block">Cover Note (optional)</label>
-              <Textarea
-                value={coverLetter}
-                onChange={(e) => setCoverLetter(e.target.value)}
-                placeholder="Why are you a good fit for this role?"
-                rows={3}
-              />
+              <Textarea value={coverLetter} onChange={(e) => setCoverLetter(e.target.value)} placeholder="Why are you a good fit for this role?" rows={3} />
             </div>
           </div>
 
@@ -342,9 +384,9 @@ const StudentJobs = () => {
             <Button
               className="gradient-primary text-primary-foreground border-0 gap-2"
               onClick={handleApply}
-              disabled={submitting}
+              disabled={submitting || uploadingResume}
             >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {(submitting || uploadingResume) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Submit Application
             </Button>
           </DialogFooter>
