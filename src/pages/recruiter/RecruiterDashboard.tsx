@@ -280,6 +280,9 @@ const RecruiterDashboard = () => {
             {[
               { stage: "Applied", count: applications.filter((a) => a.status === "Applied").length },
               { stage: "Shortlisted", count: shortlisted },
+              { stage: "Aptitude Test", count: applications.filter((a) => a.status === "Aptitude Test").length },
+              { stage: "Test Completed", count: applications.filter((a) => a.status === "Test Completed").length },
+              { stage: "Test Terminated", count: applications.filter((a) => a.status === "Test Terminated").length },
               { stage: "Interview", count: interviewed },
               { stage: "Selected", count: selected },
               { stage: "Rejected", count: applications.filter((a) => a.status === "Rejected").length },
